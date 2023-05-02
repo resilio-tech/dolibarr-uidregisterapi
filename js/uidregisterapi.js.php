@@ -94,7 +94,7 @@ if (empty($dolibarr_nocache)) {
 }
 ?>
 
-<script type="text/javascript">
+
 /* Javascript library of module UidRegisterApi */
 window.onload = function(e) {
 
@@ -248,6 +248,39 @@ window.onload = function(e) {
             document.formsoc.submit();
         }
 
+        // Fill french form
+        const fillFrenchForm = (company) => {
+
+            let options = fields.adress.country.options;
+                // console.log(options);
+                for (var i = 0; i < options.length; i++) {
+                    if (options[i].innerText.includes("FR")) {
+                        fields.adress.country.value = options[i].value;
+                        document.querySelectorAll("span#select2-selectcountry_id-container")[0].innerText = options[i].innerText;
+                    }
+                };
+
+            document.formsoc.action.value = (localStorage.status === "update") ? "edit" : "create";
+            localStorage.status = 'filling'; 
+            document.formsoc.submit();
+        }
+
+        const fillFrenchFormUpdate = (company) => {
+            console.log('update french form');
+            call_siret(company.sirene).then((res) => {
+                const siretObject = res.etablissements[0];
+                console.log('siretObject: ',siretObject);
+                const addresse = siretObject.adresseEtablissement;
+                console.log('addresse: ',addresse);
+                
+                fields.siren.value = company.sirene;
+                fields.siret.value = siretObject.siret;
+                fields.adress.city.value = addresse.libelleCommuneEtablissement;
+                fields.adress.street.value = addresse.numeroVoieEtablissement + ' ' + addresse.typeVoieEtablissement + ' ' + addresse.libelleVoieEtablissement;
+
+            })
+        }
+
         // Fill the form after page reload
         const fillOnUpdatedForm = function(company) {
             // console.log(company);
@@ -380,12 +413,12 @@ window.onload = function(e) {
                 b = document.createElement("DIV");
                 b.innerHTML = `${companies[name].sirene} - ${name}`;
                 b.innerHTML += "<input type='hidden' value='" + name + "'>";
-                // b.addEventListener("click", function(e) {
-                //     target.value = this.getElementsByTagName("input")[0].value;
-                //     fillFormFirst(companies[name]);
-                //     closeAllLists();
-                //     deleteLoading();
-                // });
+                b.addEventListener("click", function(e) {
+                    target.value = this.getElementsByTagName("input")[0].value;
+                    fillFrenchForm(companies[name]);
+                    closeAllLists();
+                    deleteLoading();
+                });
                 a.appendChild(b);
             }
         }
@@ -615,18 +648,25 @@ window.onload = function(e) {
         };
 
         const call_siret = (sirenNbr) => {
-            const token = '';
-            const siretUrl = 'https://api.insee.fr/entreprises/sirene/V3/siret?q=siren:' + sirenNbr;
-            const xmlhttp = new XMLHttpRequest();
-            xmlhttp.open('GET', siretUrl, true);
-            xmlhttp.setRequestHeader('Accept', 'application/json');
-            xmlhttp.setRequestHeader('Authorization', 'Bearer ' + token);
-            xmlhttp.onreadystatechange = function() {
-                if (xmlhttp.readyState === 4) {
-                    var jsonResponse = JSON.parse(xmlhttp.responseText);
-                }
-            };
-            xmlhttp.send();
+            return new Promise((resolve, reject) => {
+                const token = '';
+                const siretUrl = 'https://api.insee.fr/entreprises/sirene/V3/siret?q=siren:' + sirenNbr;
+                const xmlhttp = new XMLHttpRequest();
+                xmlhttp.open('GET', siretUrl, true);
+                xmlhttp.setRequestHeader('Accept', 'application/json');
+                xmlhttp.setRequestHeader('Authorization', 'Bearer ' + token);
+                xmlhttp.onreadystatechange = function() {
+                    if (xmlhttp.readyState === 4) {
+                        if (xmlhttp.status === 200){
+                            var jsonResponse = JSON.parse(xmlhttp.responseText);
+                            resolve(jsonResponse);
+                        } else {
+                            reject(new Error('Request failed with status ' + xmlhttp.status));
+                        }
+                    }
+                };
+                xmlhttp.send();
+            })
         } 
         
         /* VARIABLES DEFINITIONS */
@@ -647,6 +687,16 @@ window.onload = function(e) {
             if (countryBtn.innerText == "CH") {
                 countryBtn.innerText = "FR";
                 currentCountry = "FR";
+                // Manage country
+                let options = fields.adress.country.options;
+                // console.log(options);
+                for (var i = 0; i < options.length; i++) {
+                    if (options[i].innerText.includes("FR")) {
+                        fields.adress.country.value = options[i].value;
+                        document.querySelectorAll("span#select2-selectcountry_id-container")[0].innerText = options[i].innerText;
+                        // console.log(options[i].innerText);
+                    }
+                };
             } else {
                 countryBtn.innerText = "CH";
                 currentCountry = "CH";
@@ -658,6 +708,8 @@ window.onload = function(e) {
         // Get fields
         let fields = {
             "uid" : document.querySelectorAll("input#idprof1")[0],
+            "siren" : document.querySelectorAll("input#idprof1")[0],
+            "siret" : document.querySelectorAll("input#idprof2")[0],
             "rc_number" : document.querySelectorAll("input#idprof4")[0],
             "adress" : {
                 "street": document.querySelectorAll("textarea#address")[0],
@@ -692,13 +744,22 @@ window.onload = function(e) {
             if (localStorage.status === 'filling') {
                 // console.log("Finishing update");
                 // Page just reloaded and country is adapted
-                call_soap(
-                    target.value, 
-                    xmlDoc => parseXML(xmlDoc, companies)
-                        .then(
-                            fillOnUpdatedForm(companies[target.value])
-                            )
-                );
+                if (currentCountry == "CH") {
+                    call_soap(
+                        target.value, 
+                        xmlDoc => parseXML(xmlDoc, companies)
+                            .then(
+                                fillOnUpdatedForm(companies[target.value])
+                                )
+                    );
+                } else {
+                    call_sirene(target.value).then((res) => {
+                        parseSirene(res, companies)
+                            .then(fillFrenchFormUpdate(companies[target.value]))
+                    }).catch((err) => {
+                        console.log('err: ',err);
+                    });
+                }
             } else {
                 // Manual update of the third party
                 // console.log("Check if third party is in UID register");
