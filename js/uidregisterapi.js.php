@@ -94,7 +94,7 @@ if (empty($dolibarr_nocache)) {
 }
 ?>
 
-
+<script type="text/javascript">
 /* Javascript library of module UidRegisterApi */
 window.onload = function(e) {
 
@@ -196,28 +196,25 @@ window.onload = function(e) {
                   })
         }
 
-        const parseSirene = (jsonResponse) => {
+        const parseSirene = (jsonResponse, companies) => {
             if (!jsonResponse || !jsonResponse.unitesLegales ) {
                 console.log('No response from Sirene API');
                 return;
             }
-            let companies = [];
-            console.log('in parse: ',jsonResponse);
             const legalUnits = jsonResponse.unitesLegales;
             legalUnits.forEach((legalUnit) => {
-                const company = {
-                    siren: legalUnit.siren,
-                    name: legalUnit.periodesUniteLegale[0].denominationUniteLegale
-                };
-                companies.push(company);
+            const companyName = legalUnit.periodesUniteLegale[0].denominationUniteLegale;
+                companies[companyName] = {
+                name: companyName,
+                sirene: legalUnit.siren
+            };
             });
             console.log('companies: ',companies);
-
-            // // console.log(companies);
-            // return new Promise(function (resolve, reject) {
-            //     resolve(companies)
-            //   })
+            return new Promise(function (resolve, reject) {
+                resolve(companies)
+            })
         }
+
 
         // Fill the form using the data collected
         const fillFormFirst = function(company) {
@@ -365,8 +362,33 @@ window.onload = function(e) {
 
                 //}
             }
-            
         };
+
+        const showSireneResult = (companies) => {
+            if (!target.value)
+                return false;
+            currentFocus = -1;
+            a = document.createElement("DIV");
+            a.setAttribute("id", target.id + "autocomplete-list");
+            a.setAttribute("class", "autocomplete-items");
+            target.parentNode.appendChild(a);
+            
+            console.log('in showresult now: ',companies);
+            for (i = 0; i < Object.keys(companies).length; i++) {
+                let name = Object.keys(companies)[i];
+                console.log('here', name);
+                b = document.createElement("DIV");
+                b.innerHTML = `${companies[name].sirene} - ${name}`;
+                b.innerHTML += "<input type='hidden' value='" + name + "'>";
+                // b.addEventListener("click", function(e) {
+                //     target.value = this.getElementsByTagName("input")[0].value;
+                //     fillFormFirst(companies[name]);
+                //     closeAllLists();
+                //     deleteLoading();
+                // });
+                a.appendChild(b);
+            }
+        }
 
         function showUpdate(target) {
             // If exact match : check diff and propose update
@@ -546,42 +568,50 @@ window.onload = function(e) {
         };
 
         // Define SIRENE API-calling function
-        const call_sirene  = function(query, callbackResponse) {
-            // Abort if too short entry
-            if (query.length < 4)
-                return;
+        const call_sirene  = function(query) {
+            return new Promise((resolve, reject) => {
+                // Abort if too short entry
+                if (query.length < 4)
+                    reject(new Error('Query too short'));
+
+                // Prepare request
+                const xmlhttp = new XMLHttpRequest();
+                const token = ''
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+                const currentDate = year + '-' + month + '-' + day;
+                var SirenUrl = 'https://api.insee.fr/entreprises/sirene/V3/siren?q=periode(denominationUniteLegale%3A' + query + ')&date=' + currentDate + '&nombre=' + RESULTS_TO_SHOW;
             
-            // Prepare request
-            const xmlhttp = new XMLHttpRequest();
-            const token = ''
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = String(today.getMonth() + 1).padStart(2, '0');
-            const day = String(today.getDate()).padStart(2, '0');
-            const currentDate = year + '-' + month + '-' + day;
-            var SirenUrl = 'https://api.insee.fr/entreprises/sirene/V3/siren?q=periode(denominationUniteLegale%3A' + query + ')&date=' + currentDate + '&nombre=' + RESULTS_TO_SHOW;
-        
 
-            xmlhttp.open('GET', SirenUrl, true);
-            xmlhttp.setRequestHeader('Accept', 'application/json');
-            xmlhttp.setRequestHeader('Authorization', 'Bearer ' + token);
-            xmlhttp.onreadystatechange = function() {
-                if (xmlhttp.readyState === 4) {
-                    var jsonResponse = JSON.parse(xmlhttp.responseText);
-                    deleteLoading();}
-                    companies = {}
-                    callbackResponse(jsonResponse);
-            };
+                xmlhttp.open('GET', SirenUrl, true);
+                xmlhttp.setRequestHeader('Accept', 'application/json');
+                xmlhttp.setRequestHeader('Authorization', 'Bearer ' + token);
+                xmlhttp.onreadystatechange = function() {
+                    if (xmlhttp.readyState === 4 && xmlhttp.status === 200) {
+                        if (xmlhttp.status === 200){
+                            var jsonResponse = JSON.parse(xmlhttp.responseText);
+                            deleteLoading();   
+                            companies = {}
+                            resolve(jsonResponse);
+                            // TODO: IF 404, means there is no company with this name
+                        } else {
+                            reject(new Error('Request failed with status ' + xmlhttp.status));
+                        }
+                    }
+                };
 
-            xmlhttp.send();
+                xmlhttp.send();
 
-            // Mark loading
-            if (document.getElementById("loading-UIDreg") === null) {
-                let loading = document.createElement('td');
-                loading.innerHTML = "Loading...";
-                loading.id = "loading-UIDreg";
-                target.parentNode.parentNode.appendChild(loading);
-            }
+                // Mark loading
+                if (document.getElementById("loading-UIDreg") === null) {
+                    let loading = document.createElement('td');
+                    loading.innerHTML = "Loading...";
+                    loading.id = "loading-UIDreg";
+                    target.parentNode.parentNode.appendChild(loading);
+                }
+            });
         };
 
         const call_siret = (sirenNbr) => {
@@ -606,10 +636,10 @@ window.onload = function(e) {
         // create a country button after the target that will switch the country from "CH" to "FR"
         const countryBtn = document.createElement("button");
         countryBtn.id = "countryBtn";
-        countryBtn.innerText = "CH";
         target.parentNode.appendChild(countryBtn);
-        let currentCountry = countryBtn.innerText;
+        let currentCountry = localStorage.getItem("currentCountry") || "CH";
         var companies = {};
+        countryBtn.innerText = currentCountry;
 
         // switch country on click
         countryBtn.addEventListener("click", function (e) {
@@ -621,6 +651,7 @@ window.onload = function(e) {
                 countryBtn.innerText = "CH";
                 currentCountry = "CH";
             }
+            localStorage.setItem("currentCountry", currentCountry);
         });
 
         
@@ -691,10 +722,12 @@ window.onload = function(e) {
                         .then(showResult(target))
                     );
             } else if (currentCountry == "FR") {
-                call_sirene(
-                    target.value,
-                    jsonResp => parseSirene(jsonResp)
-                );
+                call_sirene(target.value).then((res) => {
+                    parseSirene(res, companies)
+                        .then(showSireneResult(companies))
+                }).catch((err) => {
+                    console.log('err: ',err);
+                });
             }
         });
 
