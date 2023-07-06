@@ -1,3 +1,4 @@
+
 <?php
 /* Copyright (C) 2022 Amael Parreaux-Ey <amael.parreaux-ey@resilio-solutions.com>
  *
@@ -83,6 +84,9 @@ if (!$res) {
 	die("Include of main fails");
 }
 
+require '../config.php';
+echo "var apiToken = '{$apiToken}';";
+
 // Define js type
 header('Content-Type: application/javascript');
 // Important: Following code is to cache this file to avoid page request by browser at each Dolibarr page access.
@@ -111,11 +115,6 @@ window.onload = function(e) {
         // Parse XML to companies Object
         const parseXML = function(xmlDoc, companies) {
             var organisations = xmlDoc.getElementsByTagName("uidEntitySearchResultItem");
-            // console.log("Organisations :");
-            // console.log(organisations);
-            // console.log("Companies :");
-            // console.log(companies);
-
 
             if (organisations.length === 0) {
                 // console.log("Can't find " + target.value + " in UID register.");
@@ -170,7 +169,6 @@ window.onload = function(e) {
                     } catch {
                         mapping.uidVat = null;
                     }
-                    // console.log(mapping.uidVat);
                     let vatNumber = (vatStatus && mapping.uidVat) ? formatCHE(mapping.uidVat, true) : "";
 
                     companies[mapping.name] = {
@@ -198,18 +196,19 @@ window.onload = function(e) {
 
         const parseSirene = (jsonResponse, companies) => {
             if (!jsonResponse || !jsonResponse.unitesLegales ) {
-                console.log('No response from Sirene API');
                 return;
             }
             const legalUnits = jsonResponse.unitesLegales;
             legalUnits.forEach((legalUnit) => {
             const companyName = legalUnit.periodesUniteLegale[0].denominationUniteLegale;
+            const category = legalUnit.categorieEntreprise;
                 companies[companyName] = {
-                name: companyName,
-                sirene: legalUnit.siren
-            };
+                    name: companyName,
+                    sirene: legalUnit.siren,
+                    category: category,
+                };
             });
-            console.log('companies: ',companies);
+            console.log(companies);
             return new Promise(function (resolve, reject) {
                 resolve(companies)
             })
@@ -219,9 +218,6 @@ window.onload = function(e) {
         // Fill the form using the data collected
         const fillFormFirst = function(company) {
             // Logging
-            // console.log(company);
-            // console.log(fields);
-
             // Fill
             fields.uid.value = formatCHE(company.uid);
             fields.rc_number.value = company.rc_number;
@@ -233,17 +229,14 @@ window.onload = function(e) {
 
             // Manage country
             let options = fields.adress.country.options;
-            // console.log(options);
             for (var i = 0; i < options.length; i++) {
                 if (options[i].innerText.includes(company.adress.country)) {
                     fields.adress.country.value = options[i].value;
                     document.querySelectorAll("span#select2-selectcountry_id-container")[0].innerText = options[i].innerText;
-                    // console.log(options[i].innerText);
                 }
             };
 
             document.formsoc.action.value = (localStorage.status === "update") ? "edit" : "create";
-            // console.log(document.formsoc.action.value);
             localStorage.status = 'filling'; 
             document.formsoc.submit();
         }
@@ -252,7 +245,6 @@ window.onload = function(e) {
         const fillFrenchForm = (company) => {
 
             let options = fields.adress.country.options;
-                // console.log(options);
                 for (var i = 0; i < options.length; i++) {
                     if (options[i].innerText.includes("FR")) {
                         fields.adress.country.value = options[i].value;
@@ -266,39 +258,41 @@ window.onload = function(e) {
         }
 
         const fillFrenchFormUpdate = (company) => {
-            console.log('update french form');
             call_siret(company.sirene).then((res) => {
                 const siretObject = res.etablissements[0];
-                console.log('siretObject: ',siretObject);
                 const addresse = siretObject.adresseEtablissement;
-                console.log('addresse: ',addresse);
+                const region = addresse.codePostalEtablissement.slice(0, 2);
                 
                 fields.siren.value = company.sirene;
                 fields.siret.value = siretObject.siret;
                 fields.adress.city.value = addresse.libelleCommuneEtablissement;
                 fields.adress.street.value = addresse.numeroVoieEtablissement + ' ' + addresse.typeVoieEtablissement + ' ' + addresse.libelleVoieEtablissement;
+                
+                let options = fields.adress.canton.options;
+                for (var i = 0; i < options.length; i++) {
+                    if (options[i].innerText.includes(region)) {
+                        fields.adress.canton.value = options[i].value;
+                        document.querySelectorAll("span#select2-state_id-container")[0].innerText = options[i].innerText;
+                    }
+                };
 
             })
         }
 
         // Fill the form after page reload
         const fillOnUpdatedForm = function(company) {
-            // console.log(company);
             // Manage canton
             if (company.adress.canton) {
                 let options = fields.adress.canton.options;
-                // console.log(options);
                 for (var i = 0; i < options.length; i++) {
                     if (options[i].innerText.includes(company.adress.canton)) {
                         fields.adress.canton.value = options[i].value;
                         document.querySelectorAll("span#select2-state_id-container")[0].innerText = options[i].innerText;
-                        // console.log(options[i].innerText);
                     }
                 };
             }
 
             // Manage company legal form
-            // console.log(company.legalForm);
             if (company.legalForm) {
                 const legalForms = {
                     '0109': '608', // Association
@@ -314,19 +308,14 @@ window.onload = function(e) {
                 }
                 if (company.legalForm in legalForms) {
                     fields.legalForm.value = legalForms[company.legalForm];
-                    // console.log(fields.legalForm.value);
                     let options = fields.legalForm.options;
-                    // console.log(options);
                     for (var i = 0; i < options.length; i++) {
-                        // console.log(options[i].value);
                         if (options[i].value === fields.legalForm.value) {
                             document.querySelectorAll("span#select2-forme_juridique_code-container")[0].innerText = options[i].innerText;
-                            // console.log(options[i].innerText);
                         }
                     };
                 }
             }
-            // console.log("Clear storage");
             // Clear localStorage
             localStorage.clear();
         }
@@ -336,10 +325,9 @@ window.onload = function(e) {
             /*close any already open lists of autocompleted values*/
             closeAllLists();
             if (!target.value) { return false;}
-            currentFocus = -1;
+                currentFocus = -1;
 
             if (Object.keys(companies).length === 0) {
-                // console.log("No companies found in UID reg.");
                 if (document.getElementById("UID-fail-notice")) {
                     document.getElementById("UID-fail-notice").innerHTML = "<div style={display: inline-block; margin-left: 15px;}>Can't find <strong>" + target.value + "</strong> in UID register.</div>";
                 } else {
@@ -350,7 +338,21 @@ window.onload = function(e) {
                 }
                 return false;
             }
-            // console.log(companies);
+
+            if (!target.value) { return false;}
+            currentFocus = -1;
+
+            if (Object.keys(companies).length === 0) {
+                if (document.getElementById("UID-fail-notice")) {
+                    document.getElementById("UID-fail-notice").innerHTML = "<div style={display: inline-block; margin-left: 15px;}>Can't find <strong>" + target.value + "</strong> in UID register.</div>";
+                } else {
+                    let uidFailNotice = document.createElement('td');
+                    uidFailNotice.innerHTML = "<div style={display: inline-block; margin-left: 15px;}>Can't find <strong>" + target.value + "</strong> in UID register.</div>";
+                    uidFailNotice.id = "UID-fail-notice";
+                    target.parentNode.parentNode.appendChild(uidFailNotice);
+                }
+                return false;
+            }
 
             /*create a DIV element that will contain the items (values):*/
             a = document.createElement("DIV");
@@ -362,18 +364,13 @@ window.onload = function(e) {
 
             /* Get scores and sort them -- USELESS
             var scores = Object.keys(companies).map(name => {return companies[name].score});
-            console.log(scores);
             scores = scores.sort((a, b) => {return parseInt(b) - parseInt(a)});
-            console.log(scores);
             scores = scores.slice(0, RESULTS_TO_SHOW);
-            console.log(scores); */
+            */
 
             /*for each item in the array...*/
             for (i = 0; i < Object.keys(companies).length; i++) {
                 let name = Object.keys(companies)[i];
-                /* if (scores.indexOf(companies[name].score) === -1) {
-                    console.log(name + " hidden because score is too low (" + companies[name].score + ").")
-                } else { */
                 
                 /*create a DIV element for each matching element:*/
                 b = document.createElement("DIV");
@@ -405,16 +402,16 @@ window.onload = function(e) {
             a.setAttribute("id", target.id + "autocomplete-list");
             a.setAttribute("class", "autocomplete-items");
             target.parentNode.appendChild(a);
-            
-            console.log('in showresult now: ',companies);
+
             for (i = 0; i < Object.keys(companies).length; i++) {
                 let name = Object.keys(companies)[i];
-                console.log('here', name);
                 b = document.createElement("DIV");
                 b.innerHTML = `${companies[name].sirene} - ${name}`;
                 b.innerHTML += "<input type='hidden' value='" + name + "'>";
                 b.addEventListener("click", function(e) {
                     target.value = this.getElementsByTagName("input")[0].value;
+                    
+                    
                     fillFrenchForm(companies[name]);
                     closeAllLists();
                     deleteLoading();
@@ -429,7 +426,6 @@ window.onload = function(e) {
                 // The current name is exactly one on the list returned from API, we just ceck if something changed.
                 let company = companies[target.value];
                 let to_update = [];
-                // console.log(company);
 
                 // Fill to_update with the fields that can be updated
                 if (!(fields.uid.value === formatCHE(company.uid))) {
@@ -453,7 +449,6 @@ window.onload = function(e) {
                 if (!(fields.vatNumber.value === company.vatNumber)) {
                     to_update.push('VAT Number');
                 }
-                // console.log(to_update);
 
                 if (to_update.length > 0) {
                     // Add component to show update
@@ -476,7 +471,6 @@ window.onload = function(e) {
                 }
 
             } else {    // else, print new name
-                // console.log("No exact match, show results");
                 showResult(target);
             }
         }
@@ -530,7 +524,6 @@ window.onload = function(e) {
 
         // Define SOAP API-calling function
         const call_soap = function(query, callback_response) {
-            // console.log("Query : " + query);
 
             // Abort if too short entry
             if (query.length > 3) {
@@ -575,8 +568,6 @@ window.onload = function(e) {
                                 xmlDoc.async = false;
                                 xmlDoc.loadXML(xmlhttp.responseText);
                             }
-                            // console.log("Previous companies :");
-                            // console.log(companies);
                             companies = {};
                             callback_response(xmlDoc);
                             
@@ -609,27 +600,36 @@ window.onload = function(e) {
 
                 // Prepare request
                 const xmlhttp = new XMLHttpRequest();
-                const token = ''
+                const token = apiToken
                 const today = new Date();
                 const year = today.getFullYear();
                 const month = String(today.getMonth() + 1).padStart(2, '0');
                 const day = String(today.getDate()).padStart(2, '0');
                 const currentDate = year + '-' + month + '-' + day;
+                // remove white spaces from query
+                // query = query.replace(/\s/g, '');
                 var SirenUrl = 'https://api.insee.fr/entreprises/sirene/V3/siren?q=periode(denominationUniteLegale%3A' + query + ')&date=' + currentDate + '&nombre=' + RESULTS_TO_SHOW;
-            
 
                 xmlhttp.open('GET', SirenUrl, true);
                 xmlhttp.setRequestHeader('Accept', 'application/json');
                 xmlhttp.setRequestHeader('Authorization', 'Bearer ' + token);
                 xmlhttp.onreadystatechange = function() {
-                    if (xmlhttp.readyState === 4 && xmlhttp.status === 200) {
+                    if (xmlhttp.readyState === 4) {
                         if (xmlhttp.status === 200){
                             var jsonResponse = JSON.parse(xmlhttp.responseText);
                             deleteLoading();   
                             companies = {}
                             resolve(jsonResponse);
-                            // TODO: IF 404, means there is no company with this name
-                        } else {
+                        }
+                        else {
+                            deleteLoading();
+                            // mark name not found if status is 404
+                            if (xmlhttp.status === 404 && document.getElementById("UID-fail-notice") === null) {
+                                let failNotice = document.createElement('td');
+                                failNotice.innerHTML = `No company found for <strong>${query}</strong>`;
+                                failNotice.id = "UID-fail-notice";
+                                target.parentNode.parentNode.appendChild(failNotice);
+                            }
                             reject(new Error('Request failed with status ' + xmlhttp.status));
                         }
                     }
@@ -649,7 +649,8 @@ window.onload = function(e) {
 
         const call_siret = (sirenNbr) => {
             return new Promise((resolve, reject) => {
-                const token = '';
+                console.log('here: ',sirenNbr);
+                const token = apiToken;
                 const siretUrl = 'https://api.insee.fr/entreprises/sirene/V3/siret?q=siren:' + sirenNbr;
                 const xmlhttp = new XMLHttpRequest();
                 xmlhttp.open('GET', siretUrl, true);
@@ -689,12 +690,10 @@ window.onload = function(e) {
                 currentCountry = "FR";
                 // Manage country
                 let options = fields.adress.country.options;
-                // console.log(options);
                 for (var i = 0; i < options.length; i++) {
                     if (options[i].innerText.includes("FR")) {
                         fields.adress.country.value = options[i].value;
                         document.querySelectorAll("span#select2-selectcountry_id-container")[0].innerText = options[i].innerText;
-                        // console.log(options[i].innerText);
                     }
                 };
             } else {
@@ -733,7 +732,6 @@ window.onload = function(e) {
 
 
         // Finish info update if page reloaded
-        // console.log("Target value on loading: ", target.value);
         /* 3 cases :
         + New third party
         + Automatic update
@@ -742,17 +740,18 @@ window.onload = function(e) {
         if (target.value.length > 0) {
             // Not a new third party
             if (localStorage.status === 'filling') {
-                // console.log("Finishing update");
                 // Page just reloaded and country is adapted
                 if (currentCountry == "CH") {
                     call_soap(
                         target.value, 
                         xmlDoc => parseXML(xmlDoc, companies)
-                            .then(
-                                fillOnUpdatedForm(companies[target.value])
-                                )
+                        .then(
+                            fillOnUpdatedForm(companies[target.value])
+                        )
                     );
                 } else {
+                    deleteFailNotice(); 
+                    console.log('here: ',companies, target.value);
                     call_sirene(target.value).then((res) => {
                         parseSirene(res, companies)
                             .then(fillFrenchFormUpdate(companies[target.value]))
@@ -762,7 +761,6 @@ window.onload = function(e) {
                 }
             } else {
                 // Manual update of the third party
-                // console.log("Check if third party is in UID register");
                 localStorage.status = "update";
                 call_soap(
                     target.value, 
@@ -783,6 +781,8 @@ window.onload = function(e) {
                         .then(showResult(target))
                     );
             } else if (currentCountry == "FR") {
+                deleteFailNotice(); 
+                console.log('mtn');
                 call_sirene(target.value).then((res) => {
                     parseSirene(res, companies)
                         .then(showSireneResult(companies))
@@ -817,7 +817,6 @@ window.onload = function(e) {
             }
           } else if (e.key == "Backspace") {
             // On backspace, clean the list
-            // console.log("Backspace pressed");
             closeAllLists();
           }
         });
