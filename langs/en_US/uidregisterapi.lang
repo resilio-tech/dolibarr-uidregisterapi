@@ -28,8 +28,8 @@ ModuleUidRegisterApiDesc = UidRegisterApi description
 UidRegisterApiSetup = UidRegisterApi setup
 Settings = Settings
 UidRegisterApiSetupPage = UidRegisterApi setup page
-UIDREGISTERAPI_MYPARAM1 = My param 1
-UIDREGISTERAPI_MYPARAM1Tooltip = My param 1 tooltip
+UIDREGISTERAPI_MYPARAM1 = Sirene API key 2
+UIDREGISTERAPI_MYPARAM1Tooltip = Your api key from sirene
 UIDREGISTERAPI_MYPARAM2=My param 2
 UIDREGISTERAPI_MYPARAM2Tooltip=My param 2 tooltip
 

@@ -87,7 +87,6 @@ echo "var siren_api_key = '" . addslashes($conf->global->UIDREGISTERAPI_MYPARAM1
 window.onload = function(e) {
 
     // get the addslashes($conf->global->UIDREGISTERAPI_MYPARAM1) from the php file on console
-    console.log('siren_api_key: ', siren_api_key);
 
     const path = window.location.pathname;
     const RESULTS_TO_SHOW = 10;
@@ -357,12 +356,19 @@ window.onload = function(e) {
         };
 
         // Fill the form using the data collected
-        const fillFormFirstSiren = function(company) {
+        const fillFormSiret = function(company) {
 
             // Fill
             fields.adress.city.value = company.adresseEtablissement.libelleCommuneEtablissement;
-            fields.adress.street.value = company.adresseEtablissement.typeVoieEtablissement + ' ' + company.adresseEtablissement.libelleVoieEtablissement + ' ' + company.adresseEtablissement.numeroVoieEtablissement;
+            fields.adress.street.value = 
+                (company.adresseEtablissement.typeVoieEtablissement || '') + ' ' +
+                (company.adresseEtablissement.libelleVoieEtablissement || '') + ' ' +
+                (company.adresseEtablissement.numeroVoieEtablissement || '');
+
             fields.adress.zipCode.value = company.adresseEtablissement.codePostalEtablissement;
+            fields.sirenNumber.value = company.siren;
+            fields.siretNumber.value = company.siret;
+            fields.name.value = company.uniteLegale.denominationUniteLegale;
 
             // Manage country
             let options = fields.adress.country.options;
@@ -394,15 +400,14 @@ window.onload = function(e) {
             console.log('in showresult now: ',companies);
             for (i = 0; i < Object.keys(companies).length; i++) {
                 let name = Object.keys(companies)[i];
-                console.log('here', name);
                 b = document.createElement("DIV");
                 b.innerHTML = `${companies[name].sirene} - ${name}`;
                 b.innerHTML += "<input type='hidden' value='" + name + "'>";
                 b.addEventListener("click", function(e) {
                     e.preventDefault();
-                    target.value = this.getElementsByTagName("input")[0].value;
-                    // call_siret(companies[name].sirene)
                     target.value = companies[name].sirene;
+                    localStorage.setItem('companyName', name);
+
                     // Fill the country with France
                     let countrySelect = fields.adress.country;
                     for (var i = 0; i < countrySelect.options.length; i++) {
@@ -657,8 +662,6 @@ window.onload = function(e) {
                             var jsonResponse = JSON.parse(xmlhttp.responseText);
                             deleteLoading();   
                             companies = {}
-                            console.log('siret jsonResponse: ',jsonResponse);
-                            console.log(jsonResponse.etablissements);
                             if (jsonResponse.etablissements && jsonResponse.etablissements.length > 0) {
                                 resolve(jsonResponse.etablissements[0]);
                             } else {
@@ -714,6 +717,8 @@ window.onload = function(e) {
             "legalForm": document.querySelectorAll("select#forme_juridique_code")[0],
             "sirenNumber": document.querySelectorAll("input#idprof1")[0],
             "siretNumber": document.querySelectorAll("input#idprof2")[0],
+            "effectif": document.querySelectorAll("input#effectif")[0],
+            "name": document.querySelectorAll("input#name")[0],
         }
 
 
@@ -749,14 +754,13 @@ window.onload = function(e) {
                     );
                 } else if (currentCountry == "FR") {
                     // if country is FR, we can call the API
-                    console.log('ici');
-                    // call_siret(
-                    //         target.value
-                    //     ).then((res) => {
-                    //         fillFormFirstSiren(res);
-                    //     }).catch((err) => {
-                    //         console.log('err: ',err);
-                    // });
+                    call_siret(
+                            target.value
+                        ).then((res) => {
+                            fillFormSiret(res);
+                        }).catch((err) => {
+                            console.log('err: ',err);
+                    });
                 }
             } else {
                 // Manual update of the third party
