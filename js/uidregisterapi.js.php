@@ -20,9 +20,6 @@
 if (!defined('NOREQUIREUSER')) {
 	define('NOREQUIREUSER', '1');
 }
-if (!defined('NOREQUIREDB')) {
-	define('NOREQUIREDB', '1');
-}
 if (!defined('NOREQUIRESOC')) {
 	define('NOREQUIRESOC', '1');
 }
@@ -58,45 +55,39 @@ if (!defined('NOREQUIREAJAX')) {
 // Load Dolibarr environment
 $res = 0;
 // Try main.inc.php into web root known defined into CONTEXT_DOCUMENT_ROOT (not always defined)
-if (!$res && !empty($_SERVER["CONTEXT_DOCUMENT_ROOT"])) {
-	$res = @include $_SERVER["CONTEXT_DOCUMENT_ROOT"]."/main.inc.php";
-}
+if (! $res && ! empty($_SERVER["CONTEXT_DOCUMENT_ROOT"])) $res=@include($_SERVER["CONTEXT_DOCUMENT_ROOT"]."/main.inc.php");
 // Try main.inc.php into web root detected using web root calculated from SCRIPT_FILENAME
-$tmp = empty($_SERVER['SCRIPT_FILENAME']) ? '' : $_SERVER['SCRIPT_FILENAME']; $tmp2 = realpath(__FILE__); $i = strlen($tmp) - 1; $j = strlen($tmp2) - 1;
-while ($i > 0 && $j > 0 && isset($tmp[$i]) && isset($tmp2[$j]) && $tmp[$i] == $tmp2[$j]) {
-	$i--; $j--;
-}
-if (!$res && $i > 0 && file_exists(substr($tmp, 0, ($i + 1))."/main.inc.php")) {
-	$res = @include substr($tmp, 0, ($i + 1))."/main.inc.php";
-}
-if (!$res && $i > 0 && file_exists(substr($tmp, 0, ($i + 1))."/../main.inc.php")) {
-	$res = @include substr($tmp, 0, ($i + 1))."/../main.inc.php";
-}
+$tmp=empty($_SERVER['SCRIPT_FILENAME'])?'':$_SERVER['SCRIPT_FILENAME'];$tmp2=realpath(__FILE__); $i=strlen($tmp)-1; $j=strlen($tmp2)-1;
+while($i > 0 && $j > 0 && isset($tmp[$i]) && isset($tmp2[$j]) && $tmp[$i]==$tmp2[$j]) { $i--; $j--; }
+if (! $res && $i > 0 && file_exists(substr($tmp, 0, ($i+1))."/main.inc.php")) $res=@include(substr($tmp, 0, ($i+1))."/main.inc.php");
+if (! $res && $i > 0 && file_exists(dirname(substr($tmp, 0, ($i+1)))."/main.inc.php")) $res=@include(dirname(substr($tmp, 0, ($i+1)))."/main.inc.php");
 // Try main.inc.php using relative path
-if (!$res && file_exists("../../main.inc.php")) {
-	$res = @include "../../main.inc.php";
-}
-if (!$res && file_exists("../../../main.inc.php")) {
-	$res = @include "../../../main.inc.php";
-}
-if (!$res) {
-	die("Include of main fails");
-}
+if (! $res && file_exists("../main.inc.php")) $res=@include("../main.inc.php");
+if (! $res && file_exists("../../main.inc.php")) $res=@include("../../main.inc.php");
+if (! $res && file_exists("../../../main.inc.php")) $res=@include("../../../main.inc.php");
+if (! $res) die("Include of main fails");
+
 
 // Define js type
 header('Content-Type: application/javascript');
 // Important: Following code is to cache this file to avoid page request by browser at each Dolibarr page access.
 // You can use CTRL+F5 to refresh your browser cache.
 if (empty($dolibarr_nocache)) {
-	header('Cache-Control: max-age=3600, public, must-revalidate');
+    header('Cache-Control: max-age=3600, public, must-revalidate');
 } else {
-	header('Cache-Control: no-cache');
+    header('Cache-Control: no-cache');
 }
+
+echo "var siren_api_key = '" . addslashes($conf->global->UIDREGISTERAPI_MYPARAM1) . "';\n";
+
 ?>
 
-<script type="text/javascript">
+<!-- <script type="text/javascript"> -->
 /* Javascript library of module UidRegisterApi */
 window.onload = function(e) {
+
+    // get the addslashes($conf->global->UIDREGISTERAPI_MYPARAM1) from the php file on console
+    console.log('siren_api_key: ', siren_api_key);
 
     const path = window.location.pathname;
     const RESULTS_TO_SHOW = 10;
@@ -238,11 +229,12 @@ window.onload = function(e) {
                 if (options[i].innerText.includes(company.adress.country)) {
                     fields.adress.country.value = options[i].value;
                     document.querySelectorAll("span#select2-selectcountry_id-container")[0].innerText = options[i].innerText;
-                    // console.log(options[i].innerText);
                 }
             };
 
             document.formsoc.action.value = (localStorage.status === "update") ? "edit" : "create";
+            console.log(document.querySelectorAll("span#select2-selectcountry_id-container")[0].innerText);
+            console.log('document.formsoc.action.value: ', document.formsoc.action.value);
             // console.log(document.formsoc.action.value);
             localStorage.status = 'filling'; 
             document.formsoc.submit();
@@ -364,6 +356,32 @@ window.onload = function(e) {
             }
         };
 
+        // Fill the form using the data collected
+        const fillFormFirstSiren = function(company) {
+
+            // Fill
+            fields.adress.city.value = company.adresseEtablissement.libelleCommuneEtablissement;
+            fields.adress.street.value = company.adresseEtablissement.typeVoieEtablissement + ' ' + company.adresseEtablissement.libelleVoieEtablissement + ' ' + company.adresseEtablissement.numeroVoieEtablissement;
+            fields.adress.zipCode.value = company.adresseEtablissement.codePostalEtablissement;
+
+            // Manage country
+            let options = fields.adress.country.options;
+            // console.log(options);
+            for (var i = 0; i < options.length; i++) {
+                if (options[i].innerText.includes(company.adress.country)) {
+                    fields.adress.country.value = options[i].value;
+                    document.querySelectorAll("span#select2-selectcountry_id-container")[0].innerText = options[i].innerText;
+                }
+            };
+
+            document.formsoc.action.value = (localStorage.status === "update") ? "edit" : "create";
+            console.log(document.querySelectorAll("span#select2-selectcountry_id-container")[0].innerText);
+            console.log('document.formsoc.action.value: ', document.formsoc.action.value);
+            // console.log(document.formsoc.action.value);
+            localStorage.status = 'filling'; 
+            document.formsoc.submit();
+        }
+
         const showSireneResult = (companies) => {
             if (!target.value)
                 return false;
@@ -380,12 +398,24 @@ window.onload = function(e) {
                 b = document.createElement("DIV");
                 b.innerHTML = `${companies[name].sirene} - ${name}`;
                 b.innerHTML += "<input type='hidden' value='" + name + "'>";
-                // b.addEventListener("click", function(e) {
-                //     target.value = this.getElementsByTagName("input")[0].value;
-                //     fillFormFirst(companies[name]);
-                //     closeAllLists();
-                //     deleteLoading();
-                // });
+                b.addEventListener("click", function(e) {
+                    e.preventDefault();
+                    target.value = this.getElementsByTagName("input")[0].value;
+                    // call_siret(companies[name].sirene)
+                    target.value = companies[name].sirene;
+                    // Fill the country with France
+                    let countrySelect = fields.adress.country;
+                    for (var i = 0; i < countrySelect.options.length; i++) {
+                        if (countrySelect.options[i].innerText.includes("France")) {
+                            countrySelect.options[i].selected = true; // Setting the option as selected
+                        }
+                    };
+                    closeAllLists();
+                    deleteLoading();
+                    document.formsoc.action.value = "create";
+                    localStorage.status = 'filling';
+                    document.formsoc.submit();
+                });
                 a.appendChild(b);
             }
         }
@@ -441,7 +471,6 @@ window.onload = function(e) {
                     });
                     target.parentNode.parentNode.appendChild(updateBtn);
                 }
-
             } else {    // else, print new name
                 // console.log("No exact match, show results");
                 showResult(target);
@@ -576,7 +605,7 @@ window.onload = function(e) {
 
                 // Prepare request
                 const xmlhttp = new XMLHttpRequest();
-                const token = ''
+                const token = siren_api_key;
                 const today = new Date();
                 const year = today.getFullYear();
                 const month = String(today.getMonth() + 1).padStart(2, '0');
@@ -615,19 +644,34 @@ window.onload = function(e) {
         };
 
         const call_siret = (sirenNbr) => {
-            const token = '';
-            const siretUrl = 'https://api.insee.fr/entreprises/sirene/V3/siret?q=siren:' + sirenNbr;
-            const xmlhttp = new XMLHttpRequest();
-            xmlhttp.open('GET', siretUrl, true);
-            xmlhttp.setRequestHeader('Accept', 'application/json');
-            xmlhttp.setRequestHeader('Authorization', 'Bearer ' + token);
-            xmlhttp.onreadystatechange = function() {
-                if (xmlhttp.readyState === 4) {
-                    var jsonResponse = JSON.parse(xmlhttp.responseText);
-                }
-            };
-            xmlhttp.send();
-        } 
+            return new Promise((resolve, reject) => {
+                const token = siren_api_key;
+                const siretUrl = 'https://api.insee.fr/entreprises/sirene/V3/siret?q=siren:' + sirenNbr;
+                const xmlhttp = new XMLHttpRequest();
+                xmlhttp.open('GET', siretUrl, true);
+                xmlhttp.setRequestHeader('Accept', 'application/json');
+                xmlhttp.setRequestHeader('Authorization', 'Bearer ' + token);
+                xmlhttp.onreadystatechange = function() {
+                    if (xmlhttp.readyState === 4) {
+                        if (xmlhttp.status === 200){
+                            var jsonResponse = JSON.parse(xmlhttp.responseText);
+                            deleteLoading();   
+                            companies = {}
+                            console.log('siret jsonResponse: ',jsonResponse);
+                            console.log(jsonResponse.etablissements);
+                            if (jsonResponse.etablissements && jsonResponse.etablissements.length > 0) {
+                                resolve(jsonResponse.etablissements[0]);
+                            } else {
+                                reject(new Error('No establishments found.'));
+                            }
+                        } else {
+                            reject(new Error('Request failed with status ' + xmlhttp.status));
+                        }
+                    }
+                };
+                xmlhttp.send();
+            });
+        }
         
         /* VARIABLES DEFINITIONS */
         var currentFocus;
@@ -654,7 +698,6 @@ window.onload = function(e) {
             localStorage.setItem("currentCountry", currentCountry);
         });
 
-        
         // Get fields
         let fields = {
             "uid" : document.querySelectorAll("input#idprof1")[0],
@@ -668,8 +711,11 @@ window.onload = function(e) {
             },
             "vatStatus": document.querySelectorAll("select#assujtva_value")[0],
             "vatNumber": document.querySelectorAll("input#intra_vat")[0],
-            "legalForm": document.querySelectorAll("select#forme_juridique_code")[0]
+            "legalForm": document.querySelectorAll("select#forme_juridique_code")[0],
+            "sirenNumber": document.querySelectorAll("input#idprof1")[0],
+            "siretNumber": document.querySelectorAll("input#idprof2")[0],
         }
+
 
         /* MAIN CODE */
         // If target is undefined, we are not on the form page
@@ -692,13 +738,26 @@ window.onload = function(e) {
             if (localStorage.status === 'filling') {
                 // console.log("Finishing update");
                 // Page just reloaded and country is adapted
-                call_soap(
-                    target.value, 
-                    xmlDoc => parseXML(xmlDoc, companies)
-                        .then(
-                            fillOnUpdatedForm(companies[target.value])
-                            )
-                );
+                // if conty is CH, we can call the API
+                if (currentCountry == "CH") {
+                    call_soap(
+                       target.value, 
+                       xmlDoc => parseXML(xmlDoc, companies)
+                           .then(
+                               fillOnUpdatedForm(companies[target.value])
+                               )
+                    );
+                } else if (currentCountry == "FR") {
+                    // if country is FR, we can call the API
+                    console.log('ici');
+                    // call_siret(
+                    //         target.value
+                    //     ).then((res) => {
+                    //         fillFormFirstSiren(res);
+                    //     }).catch((err) => {
+                    //         console.log('err: ',err);
+                    // });
+                }
             } else {
                 // Manual update of the third party
                 // console.log("Check if third party is in UID register");
