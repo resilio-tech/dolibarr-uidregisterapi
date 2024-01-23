@@ -91,7 +91,7 @@ window.onload = function(e) {
     const path = window.location.pathname;
     const RESULTS_TO_SHOW = 10;
     if (path.slice(-16,) === "societe/card.php") {
-    
+
         /* DEFINING FUNCTIONS */
         // Format CHE
         const formatCHE = function(input, tva=false) {
@@ -143,7 +143,7 @@ window.onload = function(e) {
                     // Manage street
                     let street = "";
                     street += mapping.street ? mapping.street : ""
-                    street += " " 
+                    street += " "
                     street += mapping.houseNumber ? mapping.houseNumber : ""
 
                     // Manage VAT status
@@ -153,7 +153,7 @@ window.onload = function(e) {
                     } catch {
                         vatStatus = false;
                     }
-                    
+
                     // Get VAT number
                     try {
                         mapping.uidVat = currentCompany.getElementsByTagName("uidVat")[0].getElementsByTagName('uidOrganisationId')[0].firstChild.nodeValue;
@@ -178,8 +178,8 @@ window.onload = function(e) {
                         "legalForm": mapping.legalForm,
                         "score": mapping.score
                     }
-                } 
-            }  
+                }
+            }
 
             return new Promise(function (resolve, reject) {
                     resolve('XML Parsed')
@@ -235,7 +235,7 @@ window.onload = function(e) {
             console.log(document.querySelectorAll("span#select2-selectcountry_id-container")[0].innerText);
             console.log('document.formsoc.action.value: ', document.formsoc.action.value);
             // console.log(document.formsoc.action.value);
-            localStorage.status = 'filling'; 
+            localStorage.status = 'filling';
             document.formsoc.submit();
         }
 
@@ -289,7 +289,7 @@ window.onload = function(e) {
             localStorage.clear();
         }
 
-        // Ensure the page in fully loaded when JS 
+        // Ensure the page in fully loaded when JS
         const showResult = function(target) {
             /*close any already open lists of autocompleted values*/
             closeAllLists();
@@ -332,7 +332,7 @@ window.onload = function(e) {
                 /* if (scores.indexOf(companies[name].score) === -1) {
                     console.log(name + " hidden because score is too low (" + companies[name].score + ").")
                 } else { */
-                
+
                 /*create a DIV element for each matching element:*/
                 b = document.createElement("DIV");
                 /*Fill with name and UID number*/
@@ -360,7 +360,7 @@ window.onload = function(e) {
 
             // Fill
             fields.adress.city.value = company.adresseEtablissement.libelleCommuneEtablissement;
-            fields.adress.street.value = 
+            fields.adress.street.value =
                 (company.adresseEtablissement.typeVoieEtablissement || '') + ' ' +
                 (company.adresseEtablissement.libelleVoieEtablissement || '') + ' ' +
                 (company.adresseEtablissement.numeroVoieEtablissement || '');
@@ -384,7 +384,7 @@ window.onload = function(e) {
             console.log(document.querySelectorAll("span#select2-selectcountry_id-container")[0].innerText);
             console.log('document.formsoc.action.value: ', document.formsoc.action.value);
             // console.log(document.formsoc.action.value);
-            localStorage.status = 'filling'; 
+            localStorage.status = 'filling';
             document.formsoc.submit();
         }
 
@@ -396,7 +396,7 @@ window.onload = function(e) {
             a.setAttribute("id", target.id + "autocomplete-list");
             a.setAttribute("class", "autocomplete-items");
             target.parentNode.appendChild(a);
-            
+
             console.log('in showresult now: ',companies);
             for (i = 0; i < Object.keys(companies).length; i++) {
                 let name = Object.keys(companies)[i];
@@ -547,7 +547,7 @@ window.onload = function(e) {
                          '<uid:Search>' +
                             '<uid:searchParameters>' +
                                '<ns:uidEntitySearchParameters>' +
-                                  '<ns:organisationName>' + query + '</ns:organisationName>' +
+                                  '<ns:organisationName>"' + query + '"</ns:organisationName>' +
                                '</ns:uidEntitySearchParameters>' +
                             '</uid:searchParameters>' +
                             '<uid:config>' +
@@ -580,7 +580,7 @@ window.onload = function(e) {
                             // console.log(companies);
                             companies = {};
                             callback_response(xmlDoc);
-                            
+
                         }
                     }
                 }
@@ -616,8 +616,8 @@ window.onload = function(e) {
                 const month = String(today.getMonth() + 1).padStart(2, '0');
                 const day = String(today.getDate()).padStart(2, '0');
                 const currentDate = year + '-' + month + '-' + day;
-                var SirenUrl = 'https://api.insee.fr/entreprises/sirene/V3/siren?q=periode(denominationUniteLegale%3A' + query + ')&date=' + currentDate + '&nombre=' + RESULTS_TO_SHOW;
-            
+                var SirenUrl = 'https://api.insee.fr/entreprises/sirene/V3/siren?q=periode(denominationUniteLegale%3A%22' + query + '%22)&date=' + currentDate + '&nombre=' + RESULTS_TO_SHOW;
+
 
                 xmlhttp.open('GET', SirenUrl, true);
                 xmlhttp.setRequestHeader('Accept', 'application/json');
@@ -626,7 +626,7 @@ window.onload = function(e) {
                     if (xmlhttp.readyState === 4 && xmlhttp.status === 200) {
                         if (xmlhttp.status === 200){
                             var jsonResponse = JSON.parse(xmlhttp.responseText);
-                            deleteLoading();   
+                            deleteLoading();
                             companies = {}
                             resolve(jsonResponse);
                             // TODO: IF 404, means there is no company with this name
@@ -660,7 +660,7 @@ window.onload = function(e) {
                     if (xmlhttp.readyState === 4) {
                         if (xmlhttp.status === 200){
                             var jsonResponse = JSON.parse(xmlhttp.responseText);
-                            deleteLoading();   
+                            deleteLoading();
                             companies = {}
                             if (jsonResponse.etablissements && jsonResponse.etablissements.length > 0) {
                                 resolve(jsonResponse.etablissements[0]);
@@ -675,7 +675,7 @@ window.onload = function(e) {
                 xmlhttp.send();
             });
         }
-        
+
         /* VARIABLES DEFINITIONS */
         var currentFocus;
         // Get target
@@ -746,7 +746,7 @@ window.onload = function(e) {
                 // if conty is CH, we can call the API
                 if (currentCountry == "CH") {
                     call_soap(
-                       target.value, 
+                       target.value,
                        xmlDoc => parseXML(xmlDoc, companies)
                            .then(
                                fillOnUpdatedForm(companies[target.value])
@@ -767,7 +767,7 @@ window.onload = function(e) {
                 // console.log("Check if third party is in UID register");
                 localStorage.status = "update";
                 call_soap(
-                    target.value, 
+                    target.value,
                     xmlDoc => parseXML(xmlDoc, companies)
                         .then(
                             showUpdate(target)
@@ -780,7 +780,7 @@ window.onload = function(e) {
         target.addEventListener("input", function(e) {
             if (currentCountry == "CH") {
                 call_soap(
-                    target.value, 
+                    target.value,
                     xmlDoc => parseXML(xmlDoc, companies)
                         .then(showResult(target))
                     );
