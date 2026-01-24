@@ -1,4 +1,4 @@
-# Copyright (C) 2022 SuperAdmin <amael.parreaux-ey@resilio-solutions.com>
+# Copyright (C) 2022 Amael Parreaux-Ey <amael.parreaux-ey@resilio-solutions.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,36 +18,34 @@
 #
 
 # Module label 'ModuleUidRegisterApiName'
-ModuleUidRegisterApiName = UidRegisterApi
+ModuleUidRegisterApiName = UID Register API
 # Module description 'ModuleUidRegisterApiDesc'
-ModuleUidRegisterApiDesc = UidRegisterApi description
+ModuleUidRegisterApiDesc = Connect to Swiss UID Register and French SIRENE API when editing third parties
 
 #
 # Admin page
 #
-UidRegisterApiSetup = UidRegisterApi setup
+UidRegisterApiSetup = UID Register API Setup
 Settings = Settings
-UidRegisterApiSetupPage = UidRegisterApi setup page
-UIDREGISTERAPI_MYPARAM1 = Sirene API key 2
-UIDREGISTERAPI_MYPARAM1Tooltip = Your api key from sirene
-UIDREGISTERAPI_MYPARAM2=My param 2
-UIDREGISTERAPI_MYPARAM2Tooltip=My param 2 tooltip
-
+UidRegisterApiSetupPage = Configure your API keys for UID Register and SIRENE API integration
+UIDREGISTERAPI_SIRENE_API_KEY = SIRENE API Key
+UIDREGISTERAPI_SIRENE_API_KEYTooltip = Your API key from INSEE SIRENE API (for French companies)
 
 #
 # About page
 #
 About = About
-UidRegisterApiAbout = About UidRegisterApi
-UidRegisterApiAboutPage = UidRegisterApi about page
+UidRegisterApiAbout = About UID Register API
+UidRegisterApiAboutPage = UID Register API about page
 
 #
-# Sample page
+# Permissions
 #
-MyPageName = My page name
+ReadUidRegisterApi = Read UID Register API
+WriteUidRegisterApi = Configure UID Register API
 
 #
-# Sample widget
+# Index page
 #
-MyWidget = My widget
-MyWidgetDescription = My widget description
+UidRegisterApiArea = UID Register API
+UidRegisterApiDescription = This module allows you to connect to the Swiss UID Register and French SIRENE API when editing third parties from frontend. Start typing a company name in the third party creation form to see autocomplete suggestions.

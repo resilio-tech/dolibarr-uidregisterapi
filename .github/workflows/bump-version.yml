@@ -1,0 +1,110 @@
+name: Bump Version
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      custom_version:
+        description: 'Custom version (overrides version_type if set)'
+        required: false
+        type: string
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get current version
+        id: current
+        run: |
+          VERSION=$(grep -oP "\\\$this->version\s*=\s*'\K[^']+" core/modules/modUidRegisterApi.class.php)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $VERSION"
+
+      - name: Calculate new version
+        id: new
+        run: |
+          CURRENT="${{ steps.current.outputs.version }}"
+
+          if [ -n "${{ github.event.inputs.custom_version }}" ]; then
+            NEW_VERSION="${{ github.event.inputs.custom_version }}"
+          else
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+
+            case "${{ github.event.inputs.version_type }}" in
+              major)
+                MAJOR=$((MAJOR + 1))
+                MINOR=0
+                PATCH=0
+                ;;
+              minor)
+                MINOR=$((MINOR + 1))
+                PATCH=0
+                ;;
+              patch)
+                PATCH=$((PATCH + 1))
+                ;;
+            esac
+
+            NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          fi
+
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "New version: $NEW_VERSION"
+
+      - name: Check if version already up to date
+        id: check
+        run: |
+          CURRENT="${{ steps.current.outputs.version }}"
+          NEW="${{ steps.new.outputs.version }}"
+
+          if [ "$CURRENT" = "$NEW" ]; then
+            echo "Version is already up to date ($CURRENT)"
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update version in module descriptor
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          NEW_VERSION="${{ steps.new.outputs.version }}"
+          sed -i "s/\$this->version = '[^']*'/\$this->version = '$NEW_VERSION'/" core/modules/modUidRegisterApi.class.php
+
+          echo "Updated version to $NEW_VERSION"
+          grep "version" core/modules/modUidRegisterApi.class.php | head -1
+
+      - name: Create Pull Request
+        if: steps.check.outputs.skip != 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: bump version to ${{ steps.new.outputs.version }}"
+          title: "chore: bump version to ${{ steps.new.outputs.version }}"
+          body: |
+            ## Version Bump
+
+            This PR bumps the module version from `${{ steps.current.outputs.version }}` to `${{ steps.new.outputs.version }}`.
+
+            ### Changes
+            - Updated version in `core/modules/modUidRegisterApi.class.php`
+
+            ### Next Steps
+            After merging this PR:
+            1. Create a new tag: `git tag v${{ steps.new.outputs.version }}`
+            2. Push the tag: `git push origin v${{ steps.new.outputs.version }}`
+            3. The build workflow will automatically create a release
+          branch: "version-bump-${{ steps.new.outputs.version }}"
+          delete-branch: true

@@ -78,7 +78,7 @@ if (empty($dolibarr_nocache)) {
     header('Cache-Control: no-cache');
 }
 
-echo "var siren_api_key = '" . addslashes($conf->global->UIDREGISTERAPI_MYPARAM1) . "';\n";
+echo "var siren_api_key = '" . addslashes($conf->global->UIDREGISTERAPI_SIRENE_API_KEY) . "';\n";
 
 ?>
 
