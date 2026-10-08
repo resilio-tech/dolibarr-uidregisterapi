@@ -78,7 +78,7 @@ if (empty($dolibarr_nocache)) {
     header('Cache-Control: no-cache');
 }
 
-echo "var siren_api_key = '" . addslashes($conf->global->UIDREGISTERAPI_SIRENE_API_KEY) . "';\n";
+echo "var sirene_endpoint = '" . dol_escape_js(dol_buildpath('/uidregisterapi/ajax/sirene.php', 1)) . "';\n";
 
 ?>
 
@@ -336,9 +336,12 @@ window.onload = function(e) {
                 /*create a DIV element for each matching element:*/
                 b = document.createElement("DIV");
                 /*Fill with name and UID number*/
-                b.innerHTML = name + " - " + formatCHE(companies[name]["uid"]);
+                b.textContent = name + " - " + formatCHE(companies[name]["uid"]);
                 /*insert a input field that will hold the current array item's value:*/
-                b.innerHTML += "<input type='hidden' value='" + name + "'>";
+                let hiddenInput = document.createElement("input");
+                hiddenInput.type = "hidden";
+                hiddenInput.value = name;
+                b.appendChild(hiddenInput);
                 /*execute a function when someone clicks on the item value (DIV element):*/
                 b.addEventListener("click", function(e) {
                       /*insert the value for the autocomplete text field:*/
@@ -401,8 +404,11 @@ window.onload = function(e) {
             for (i = 0; i < Object.keys(companies).length; i++) {
                 let name = Object.keys(companies)[i];
                 b = document.createElement("DIV");
-                b.innerHTML = `${companies[name].sirene} - ${name}`;
-                b.innerHTML += "<input type='hidden' value='" + name + "'>";
+                b.textContent = `${companies[name].sirene} - ${name}`;
+                let hiddenInput = document.createElement("input");
+                hiddenInput.type = "hidden";
+                hiddenInput.value = name;
+                b.appendChild(hiddenInput);
                 b.addEventListener("click", function(e) {
                     e.preventDefault();
                     target.value = companies[name].sirene;
@@ -610,18 +616,10 @@ window.onload = function(e) {
 
                 // Prepare request
                 const xmlhttp = new XMLHttpRequest();
-                const token = siren_api_key;
-                const today = new Date();
-                const year = today.getFullYear();
-                const month = String(today.getMonth() + 1).padStart(2, '0');
-                const day = String(today.getDate()).padStart(2, '0');
-                const currentDate = year + '-' + month + '-' + day;
-                var SirenUrl = 'https://api.insee.fr/entreprises/sirene/V3/siren?q=periode(denominationUniteLegale%3A%22' + query + '%22)&date=' + currentDate + '&nombre=' + RESULTS_TO_SHOW;
-
+                var SirenUrl = sirene_endpoint + '?mode=siren&q=' + encodeURIComponent(query);
 
                 xmlhttp.open('GET', SirenUrl, true);
                 xmlhttp.setRequestHeader('Accept', 'application/json');
-                xmlhttp.setRequestHeader('Authorization', 'Bearer ' + token);
                 xmlhttp.onreadystatechange = function() {
                     if (xmlhttp.readyState === 4 && xmlhttp.status === 200) {
                         if (xmlhttp.status === 200){
@@ -650,12 +648,10 @@ window.onload = function(e) {
 
         const call_siret = (sirenNbr) => {
             return new Promise((resolve, reject) => {
-                const token = siren_api_key;
-                const siretUrl = 'https://api.insee.fr/entreprises/sirene/V3/siret?q=siren:' + sirenNbr;
+                const siretUrl = sirene_endpoint + '?mode=siret&siren=' + encodeURIComponent(sirenNbr);
                 const xmlhttp = new XMLHttpRequest();
                 xmlhttp.open('GET', siretUrl, true);
                 xmlhttp.setRequestHeader('Accept', 'application/json');
-                xmlhttp.setRequestHeader('Authorization', 'Bearer ' + token);
                 xmlhttp.onreadystatechange = function() {
                     if (xmlhttp.readyState === 4) {
                         if (xmlhttp.status === 200){
