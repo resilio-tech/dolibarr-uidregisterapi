@@ -103,8 +103,7 @@ jobs:
 
             ### Next Steps
             After merging this PR:
-            1. Create a new tag: `git tag v${{ steps.new.outputs.version }}`
-            2. Push the tag: `git push origin v${{ steps.new.outputs.version }}`
-            3. The build workflow will automatically create a release
+            1. Publish a GitHub release `v${{ steps.new.outputs.version }}`
+            2. The build workflow will attach the module zip to it
           branch: "version-bump-${{ steps.new.outputs.version }}"
           delete-branch: true
