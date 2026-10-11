@@ -1,9 +1,6 @@
 name: Build Dolibarr Module
 
 on:
-  push:
-    tags:
-      - 'v*'
   release:
     types: [published]
   workflow_dispatch:
@@ -76,15 +73,6 @@ jobs:
           name: module_uidregisterapi-${{ steps.version.outputs.version }}
           path: module_uidregisterapi-${{ steps.version.outputs.version }}.zip
           retention-days: 30
-
-      - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v1
-        with:
-          files: module_uidregisterapi-${{ steps.version.outputs.version }}.zip
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload to existing Release
         if: github.event_name == 'release'
